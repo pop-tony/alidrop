@@ -8,7 +8,9 @@ export async function api(path, options = {}) {
       ...options.headers,
     },
   });
-  const payload = await response.json().catch(() => ({}));
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+  if (!payload) throw new Error('The API is unavailable. Start the server and try again.');
   if (!response.ok) throw new Error(payload.error || 'The request could not be completed.');
   return payload;
 }
