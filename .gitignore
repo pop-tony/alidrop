@@ -2,3 +2,4 @@ node_modules/
 client/dist/
 server/data/store.json
 .env
+h
