@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+Run these commands from the repository root. The frontend lives in `client/`, and the API lives in `server/`.
+
 Open the Vite URL printed by the dev server. The API runs on port 3001 and Vite proxies `/api` requests to it. The first server start creates `server/data/store.json`; quote requests, supplier messages, buyer accounts, and supplier applications are persisted there.
 
 ## Production
@@ -17,6 +19,8 @@ Open the Vite URL printed by the dev server. The API runs on port 3001 and Vite 
 npm run build
 npm start
 ```
+
+These commands also run from the repository root. To run them from `client/` directly, use the same commands there.
 
 Express serves the built client and API on port 3001. Set `JWT_SECRET` to a private random value before deployment. Catalog, supplier, review, and sample shipment data are demonstration records. Payments, live freight rates, email delivery, and production identity verification need external providers and are not connected in this local implementation.
 

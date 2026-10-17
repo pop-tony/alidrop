@@ -115,7 +115,7 @@ app.get('/api/auth/me', authenticate, (req, res) => {
   return user ? res.json({ user: { id: user.id, name: user.name, email: user.email } }) : res.status(404).json({ error: 'Account not found.' });
 });
 
-const builtClient = path.resolve(directory, '../dist');
+const builtClient = path.resolve(directory, '../client/dist');
 app.use(express.static(builtClient));
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'API endpoint not found.' });
