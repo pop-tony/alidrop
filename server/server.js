@@ -6,12 +6,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { categories, createInitialStore, products, suppliers } from './seed.js';
 
-const directory = path.dirname(fileURLToPath(import.meta.url));
-const dataDirectory = path.join(directory, 'data');
+const directory = path.dirname(fileURLToPath(importikbo.meta.url));
+const dataDirectory = process.env.VERCEL === '1' ? path.join('/tmp', 'meridian-trade') : path.join(directory, 'data');
 const storePath = path.join(dataDirectory, 'store.json');
 const jwtSecret = process.env.JWT_SECRET || 'local-development-secret-change-this';
 const app = express();
 const port = Number(process.env.PORT || 3001);
+const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 mkdirSync(dataDirectory, { recursive: true });
 if (!existsSync(storePath)) writeFileSync(storePath, JSON.stringify(createInitialStore(), null, 2));
 const readStore = () => JSON.parse(readFileSync(storePath, 'utf8'));
@@ -27,6 +28,15 @@ function authenticate(req, res, next) {
 }
 
 app.use(express.json({ limit: '1mb' }));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin === allowedOrigin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'Meridian Trade API' }));
 app.get('/api/categories', (req, res) => res.json(categories));
 app.get('/api/products', (req, res) => {
@@ -121,4 +131,6 @@ app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'API endpoint not found.' });
   res.sendFile(path.join(builtClient, 'index.html'), (error) => { if (error) res.status(404).send('Build the client with npm run build first.'); });
 });
-app.listen(port, () => console.log(`Meridian API listening on http://localhost:${port}`));
+if (process.env.VERCEL !== '1') app.listen(port, () => console.log(`Meridian API listening on http://localhost:${port}`));
+
+export default app;

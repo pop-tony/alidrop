@@ -1,6 +1,8 @@
 export async function api(path, options = {}) {
   const token = localStorage.getItem('meridian-token');
-  const response = await fetch(path.startsWith('/api/') ? path : `/api/${path}`, {
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const endpoint = path.startsWith('/api/') ? path : `/api/${path}`;
+  const response = await fetch(`${apiBaseUrl}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

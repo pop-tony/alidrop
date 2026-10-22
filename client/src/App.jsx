@@ -5,6 +5,7 @@ import {
   Shirt, ShoppingCart, Sparkles, Star, Truck, UserRound, X, Dumbbell, Clock3,
 } from 'lucide-react';
 import { api } from './lib/api.js';
+import { categories as localCategories, products as localProducts, suppliers as localSuppliers } from './data/catalog.js';
 
 const icons = { cpu: Cpu, home: House, shirt: Shirt, sparkles: Sparkles, car: Truck, factory: Factory, dumbbell: Dumbbell, paw: PawPrint };
 const image = (id, width = 760) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=84`;
@@ -61,14 +62,14 @@ function SupplierCard({ supplier, onContact, index }) {
 }
 
 function App() {
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [catalog, setCatalog] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
+  const [categories] = useState(localCategories);
+  const [products, setProducts] = useState(localProducts);
+  const [catalog] = useState(localProducts);
+  const [suppliers] = useState(localSuppliers);
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [category, setCategory] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [modal, setModal] = useState('');
   const [notice, setNotice] = useState('');
@@ -88,19 +89,17 @@ function App() {
   const [shippingMessage, setShippingMessage] = useState('Enter a destination postal code to estimate shipping.');
 
   useEffect(() => {
-    api('categories').then(setCategories).catch((reason) => setError(reason.message));
-    api('suppliers').then((result) => setSuppliers(result.items)).catch((reason) => setError(reason.message));
-    api('products').then((result) => setCatalog(result.items)).catch((reason) => setError(reason.message));
-  }, []);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
     const params = new URLSearchParams();
     if (appliedQuery) params.set('q', appliedQuery);
     if (category) params.set('category', category);
-    api(`products?${params}`).then((result) => { if (active) { setProducts(result.items); setError(''); } })
-      .catch((reason) => active && setError(reason.message)).finally(() => active && setLoading(false));
-    return () => { active = false; };
+    const queryText = params.get('q')?.toLowerCase() || '';
+    const selectedCategory = params.get('category') || '';
+    setProducts(localProducts.filter((product) => {
+      const categoryMatches = !selectedCategory || product.category === selectedCategory;
+      const searchable = `${product.name} ${product.category} ${product.supplier} ${product.country} ${product.summary}`.toLowerCase();
+      return categoryMatches && (!queryText || searchable.includes(queryText));
+    }));
+    setError('');
   }, [appliedQuery, category]);
   useEffect(() => { localStorage.setItem('meridian-cart', JSON.stringify(cart)); }, [cart]);
   useEffect(() => { localStorage.setItem('meridian-favorites', JSON.stringify(favorites)); }, [favorites]);
@@ -109,9 +108,10 @@ function App() {
   const close = () => setModal('');
   const runSearch = (event) => { event?.preventDefault(); setAppliedQuery(query.trim()); document.querySelector('#featured')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const selectCategory = (name) => { setCategory(category === name ? '' : name); setAppliedQuery(''); setQuery(''); document.querySelector('#featured')?.scrollIntoView({ behavior: 'smooth' }); };
-  const openProduct = async (id) => {
-    try { const product = await api(`products/${id}`); setSelectedProduct(product); setGalleryImage(image(product.image, 1000)); setShippingMessage('Enter a destination postal code to estimate shipping.'); setModal('product'); }
-    catch (reason) { setNotice(reason.message); }
+  const openProduct = (id) => {
+    const product = catalog.find((item) => item.id === id);
+    if (!product) return setNotice('Product not found.');
+    setSelectedProduct(product); setGalleryImage(image(product.image, 1000)); setShippingMessage('Enter a destination postal code to estimate shipping.'); setModal('product');
   };
   const toggleFavorite = (id) => setFavorites((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]);
   const addToCart = (product) => { setCart((items) => items.some((item) => item.id === product.id) ? items : [...items, { id: product.id, quantity: product.moq }]); setNotice('Added to your sourcing list'); };
@@ -120,7 +120,7 @@ function App() {
   const updateQuote = (id, quantity) => setQuoteItems((items) => items.map((item) => item.id === id ? { ...item, quantity: Number(quantity) } : item));
   const submitQuote = async (event) => {
     event.preventDefault(); const form = new FormData(event.currentTarget);
-    try { const result = await api('quotes', { method: 'POST', body: JSON.stringify({ email: form.get('email'), message: form.get('message'), items: quoteItems }) }); close(); setNotice(`Quote ${result.quote.id} sent to your suppliers`); }
+    try { const result = await api('quotes', { method: 'POST', body: JSON.stringify({ email: form.get('email'), message: form.get('message'), items: quoteItems.map((item) => ({ productId: item.id, quantity: item.quantity })) }) }); close(); setNotice(`Quote ${result.quote.id} sent to your suppliers`); }
     catch (reason) { setNotice(reason.message); }
   };
   const openChat = (supplier, product = null) => { setSupplierTarget({ ...supplier, productId: product?.id || null }); setModal('chat'); };
